@@ -2,7 +2,8 @@ import client from './client';
 import type { MenuItem } from '../types';
 
 export const getMenus = async (q?: string): Promise<MenuItem[]> => {
-  const res = await client.get('/menu', { params: q ? { q } : {} });
+  const res = await client.get('/menu', { params: q ? { q } : undefined });
+  console.log('메뉴 응답:', res.data);
   return res.data.items;
 };
 
