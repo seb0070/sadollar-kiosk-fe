@@ -1,5 +1,5 @@
 import client from './client';
-import { CartResponse } from '../types';
+import type { CartResponse } from '../types';
 
 export const getCart = async (sessionId: string): Promise<CartResponse> => {
   const res = await client.get(`/cart/${sessionId}`);

@@ -1,5 +1,5 @@
 import client from './client';
-import { MenuItem } from '../types';
+import type { MenuItem } from '../types';
 
 export const getMenus = async (q?: string): Promise<MenuItem[]> => {
   const res = await client.get('/menu', { params: q ? { q } : {} });
