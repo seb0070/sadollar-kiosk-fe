@@ -1,8 +1,19 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
+import { SessionContext } from './store/sessionStore';
+import Home from './pages/Home';
+
 function App() {
+  const [sessionId] = useState(() => crypto.randomUUID());
+
   return (
-    <div>
-      <h1>리아버거 키오스크</h1>
-    </div>
+    <SessionContext.Provider value={{ sessionId }}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </BrowserRouter>
+    </SessionContext.Provider>
   );
 }
 
