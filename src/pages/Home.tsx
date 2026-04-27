@@ -1,11 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMenus } from '../api/menu';
+import { useState } from 'react';
+import MenuModal from '../components/MenuModal';
 
 function Home() {
   const { data: menus, isLoading } = useQuery({
     queryKey: ['menus'],
     queryFn: () => getMenus(),
   });
+
+  const [showModal, setShowModal] = useState(false);
 
   if (isLoading) return <div>로딩 중...</div>;
 
@@ -64,6 +68,7 @@ function Home() {
             ⭐ 추천 메뉴
           </span>
           <button
+            onClick={() => setShowModal(true)}
             style={{
               background: 'rgba(0,0,0,0.6)',
               color: 'white',
@@ -127,6 +132,7 @@ function Home() {
             ))}
         </div>
       </div>
+      {showModal && <MenuModal onClose={() => setShowModal(false)} />}
     </div>
   );
 }
