@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getMenus } from '../api/menu';
 import { useVoice } from '../hooks/useVoice';
 import { useCart } from '../store/cartStore';
+import { useSession } from '../store/sessionStore';
 import VoiceWave from '../components/VoiceWave';
+import OptionModal from '../components/OptionModal';
 import type { MenuItem } from '../types';
 
 const CATEGORIES = ['추천메뉴', '버거', '디저트/치킨', '음료/커피', '행사메뉴'];
@@ -21,10 +23,18 @@ const MENU_AREA_HEIGHT =
   GAP * (GRID_ROWS - 1) +
   PAGINATION_HEIGHT;
 
+const parseBadge = (badge: string): string[] => {
+  try {
+    return JSON.parse(badge);
+  } catch {
+    return [];
+  }
+};
+
 const filterByCategory = (menus: MenuItem[], category: string): MenuItem[] => {
   switch (category) {
     case '추천메뉴':
-      return menus.filter((m) => m.badge === 'BEST');
+      return menus.filter((m) => parseBadge(m.badge ?? '').includes('추천'));
     case '버거':
       return menus.filter((m) => m.category === '버거');
     case '디저트/치킨':
@@ -34,7 +44,7 @@ const filterByCategory = (menus: MenuItem[], category: string): MenuItem[] => {
     case '음료/커피':
       return menus.filter((m) => m.category === '음료');
     case '행사메뉴':
-      return menus.filter((m) => m.badge === 'NEW');
+      return menus.filter((m) => parseBadge(m.badge ?? '').includes('NEW'));
     default:
       return menus;
   }
@@ -43,19 +53,26 @@ const filterByCategory = (menus: MenuItem[], category: string): MenuItem[] => {
 function Home() {
   const [activeCategory, setActiveCategory] = useState('추천메뉴');
   const [page, setPage] = useState(0);
-  const [cartOpen, setCartOpen] = useState(false);
+  const [selectedMenu, setSelectedMenu] = useState<MenuItem | null>(null);
   const navigate = useNavigate();
 
-  const { isConnected, isListening, message, toggleListening } = useVoice();
-  const { items, addItem, removeItem, total } = useCart();
+  const { sessionId } = useSession();
+  const {
+    isConnected,
+    isListening,
+    voiceMessage,
+    screenItems,
+    toggleListening,
+  } = useVoice(sessionId);
 
   const { data: menus, isLoading } = useQuery({
     queryKey: ['menus'],
     queryFn: () => getMenus(),
   });
 
+  const { items, addItem, total, totalCount } = useCart(menus);
+
   const filtered = menus ? filterByCategory(menus, activeCategory) : [];
-  const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paged = filtered.slice(
     page * ITEMS_PER_PAGE,
@@ -97,7 +114,7 @@ function Home() {
         position: 'relative',
       }}
     >
-      {/* 상단 헤더 */}
+      {/* 헤더 */}
       <div
         style={{
           display: 'flex',
@@ -164,7 +181,7 @@ function Home() {
         ))}
       </div>
 
-      {/* 메뉴 영역 — 항상 고정 높이 */}
+      {/* 메뉴 영역 — 고정 높이 */}
       <div
         style={{
           height: `${MENU_AREA_HEIGHT}px`,
@@ -172,7 +189,6 @@ function Home() {
           background: '#f8f8f8',
         }}
       >
-        {/* 메뉴 그리드 */}
         <div
           style={{
             padding: `${GRID_PADDING}px 12px`,
@@ -185,14 +201,7 @@ function Home() {
           {paged.map((menu) => (
             <div
               key={menu.id}
-              onClick={() =>
-                addItem({
-                  id: menu.id,
-                  name: menu.name,
-                  price: parseInt(menu.price.replace(',', '')),
-                  img_url: menu.img_url ?? '',
-                })
-              }
+              onClick={() => setSelectedMenu(menu)}
               style={{
                 background: 'white',
                 borderRadius: '12px',
@@ -244,13 +253,13 @@ function Home() {
                   fontWeight: '700',
                 }}
               >
-                {parseInt(menu.price.replace(',', '')).toLocaleString()}원
+                {menu.price.toLocaleString()}원
               </div>
             </div>
           ))}
         </div>
 
-        {/* 페이지네이션 — 항상 표시 */}
+        {/* 페이지네이션 */}
         <div
           style={{
             height: `${PAGINATION_HEIGHT}px`,
@@ -304,7 +313,7 @@ function Home() {
         </div>
       </div>
 
-      {/* 하단 AI 응답 + 파형 + 버튼 */}
+      {/* 하단 음성 영역 */}
       <div
         style={{
           flex: 1,
@@ -314,7 +323,6 @@ function Home() {
           borderTop: '1px solid #ebebeb',
         }}
       >
-        {/* AI 응답 + 파형 */}
         <div
           style={{
             flex: 1,
@@ -323,9 +331,10 @@ function Home() {
             justifyContent: 'center',
             alignItems: 'center',
             padding: '16px',
-            gap: '12px',
+            gap: '10px',
           }}
         >
+          {/* 음성 응답 텍스트 */}
           <div
             style={{
               fontSize: '14px',
@@ -335,35 +344,60 @@ function Home() {
               lineHeight: '1.6',
             }}
           >
-            {message || '원하시는 메뉴를 말씀해 주세요'}
+            {voiceMessage || '원하시는 메뉴를 말씀해 주세요'}
           </div>
+
+          {/* 선택지 UI */}
+          {screenItems.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                width: '100%',
+              }}
+            >
+              {screenItems.map((item: string, idx: number) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: '#fff5f3',
+                    border: '1.5px solid #e63312',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#e63312',
+                    textAlign: 'center',
+                  }}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+          )}
+
           <VoiceWave isActive={isListening} />
         </div>
 
-        {/* 버튼 영역 */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            padding: '10px 14px 14px',
-          }}
-        >
+        {/* 하단 버튼 */}
+        <div style={{ display: 'flex', gap: '8px', padding: '10px 14px 14px' }}>
           <button
-            onClick={() => items.length > 0 && setCartOpen(true)}
+            onClick={() => navigate('/cart')}
             style={{
               flex: 1,
               background: '#f0f0f0',
-              color: items.length === 0 ? '#bbb' : '#333',
+              color: '#333',
               border: 'none',
               borderRadius: '12px',
               height: '52px',
               fontWeight: '700',
               fontSize: '14px',
-              cursor: items.length > 0 ? 'pointer' : 'default',
+              cursor: 'pointer',
               position: 'relative',
             }}
           >
-            장바구니
+            장바구니 보기
             {totalCount > 0 && (
               <span
                 style={{
@@ -386,7 +420,6 @@ function Home() {
               </span>
             )}
           </button>
-
           <button
             onClick={() => items.length > 0 && navigate('/cart')}
             disabled={items.length === 0}
@@ -407,7 +440,6 @@ function Home() {
               ? '결제하기'
               : `결제 ${total.toLocaleString()}원`}
           </button>
-
           <button
             onClick={toggleListening}
             disabled={!isConnected}
@@ -434,184 +466,15 @@ function Home() {
         </div>
       </div>
 
-      {/* 장바구니 드로어 */}
-      {cartOpen && (
-        <>
-          <div
-            onClick={() => setCartOpen(false)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              zIndex: 10,
-            }}
-          />
-
-          {message && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 'calc(66.6% + 12px)',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'white',
-                borderRadius: '14px',
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#333',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                zIndex: 12,
-                width: '80%',
-                textAlign: 'center',
-                border: '2px solid #e63312',
-              }}
-            >
-              {message}
-            </div>
-          )}
-
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '66.6%',
-              background: '#fff',
-              borderRadius: '20px 20px 0 0',
-              zIndex: 11,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              onClick={() => setCartOpen(false)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                padding: '12px',
-                cursor: 'pointer',
-                gap: '4px',
-              }}
-            >
-              <div
-                style={{
-                  width: '36px',
-                  height: '4px',
-                  background: '#ddd',
-                  borderRadius: '2px',
-                }}
-              />
-              <span style={{ fontSize: '12px', color: '#aaa' }}>내리기 ▼</span>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '0 16px 10px',
-                fontSize: '13px',
-                borderBottom: '1px solid #eee',
-              }}
-            >
-              <span style={{ color: '#555' }}>
-                주문수 <strong style={{ color: '#222' }}>{totalCount}</strong>
-              </span>
-              <span style={{ color: '#555' }}>
-                합계{' '}
-                <strong style={{ color: '#e63312' }}>
-                  {total.toLocaleString()}원
-                </strong>
-              </span>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <img
-                    src={item.img_url}
-                    alt={item.name}
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      objectFit: 'contain',
-                      borderRadius: '8px',
-                      background: '#f9f9f9',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: '#222',
-                      }}
-                    >
-                      {item.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: '#e63312',
-                        marginTop: '2px',
-                        fontWeight: '700',
-                      }}
-                    >
-                      {(item.price * item.quantity).toLocaleString()}원
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '13px', color: '#666' }}>
-                    x{item.quantity}
-                  </span>
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ccc',
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                      padding: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ padding: '10px 16px 16px' }}>
-              <button
-                onClick={() => navigate('/cart')}
-                style={{
-                  width: '100%',
-                  background: '#e63312',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '14px',
-                  height: '52px',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  cursor: 'pointer',
-                }}
-              >
-                결제 {total.toLocaleString()}원
-              </button>
-            </div>
-          </div>
-        </>
+      {/* 옵션 모달 */}
+      {selectedMenu && (
+        <OptionModal
+          menu={selectedMenu}
+          onClose={() => setSelectedMenu(null)}
+          onConfirm={(params) => {
+            addItem(params.menu_id, params.unit_price);
+          }}
+        />
       )}
     </div>
   );
