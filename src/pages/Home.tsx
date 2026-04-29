@@ -181,7 +181,7 @@ function Home() {
         ))}
       </div>
 
-      {/* 메뉴 영역 — 고정 높이 */}
+      {/* 메뉴 영역 */}
       <div
         style={{
           height: `${MENU_AREA_HEIGHT}px`,
@@ -258,8 +258,6 @@ function Home() {
             </div>
           ))}
         </div>
-
-        {/* 페이지네이션 */}
         <div
           style={{
             height: `${PAGINATION_HEIGHT}px`,
@@ -334,7 +332,6 @@ function Home() {
             gap: '10px',
           }}
         >
-          {/* 음성 응답 텍스트 */}
           <div
             style={{
               fontSize: '14px',
@@ -346,8 +343,6 @@ function Home() {
           >
             {voiceMessage || '원하시는 메뉴를 말씀해 주세요'}
           </div>
-
-          {/* 선택지 UI */}
           {screenItems.length > 0 && (
             <div
               style={{
@@ -376,11 +371,8 @@ function Home() {
               ))}
             </div>
           )}
-
           <VoiceWave isActive={isListening} />
         </div>
-
-        {/* 하단 버튼 */}
         <div style={{ display: 'flex', gap: '8px', padding: '10px 14px 14px' }}>
           <button
             onClick={() => navigate('/cart')}
@@ -471,6 +463,9 @@ function Home() {
         <OptionModal
           menu={selectedMenu}
           voiceMessage={voiceMessage}
+          isListening={isListening}
+          isConnected={isConnected}
+          onToggleListening={toggleListening}
           onClose={() => setSelectedMenu(null)}
           onConfirm={(params) => {
             addItem(params.menu_id, params.unit_price);

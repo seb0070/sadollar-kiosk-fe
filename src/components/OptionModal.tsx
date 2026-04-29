@@ -21,6 +21,9 @@ interface SetMenu {
 interface Props {
   menu: MenuItem;
   voiceMessage?: string;
+  isListening?: boolean;
+  isConnected?: boolean;
+  onToggleListening?: () => void;
   onClose: () => void;
   onConfirm: (params: {
     menu_id: number;
@@ -35,7 +38,15 @@ interface Props {
 type Step = 'type' | 'drink' | 'side' | 'confirm';
 const OPTIONS_PER_PAGE = 6;
 
-function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
+function OptionModal({
+  menu,
+  voiceMessage,
+  isListening,
+  isConnected,
+  onToggleListening,
+  onClose,
+  onConfirm,
+}: Props) {
   const [step, setStep] = useState<Step>('type');
   const [isSet, setIsSet] = useState(false);
   const [setInfo, setSetInfo] = useState<SetMenu | null>(null);
@@ -71,17 +82,14 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
     setIsSet(set);
     setStep(set ? 'drink' : 'confirm');
   };
-
   const handleDrinkSelect = (drink: Option) => {
     setSelectedDrink(drink);
     setStep('side');
   };
-
   const handleSideSelect = (side: Option) => {
     setSelectedSide(side);
     setStep('confirm');
   };
-
   const handleConfirm = () => {
     onConfirm({
       menu_id: menu.id,
@@ -93,14 +101,12 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
     });
     onClose();
   };
-
   const handlePrev = () => {
     if (step === 'drink') setStep('type');
     else if (step === 'side') setStep('drink');
     else if (step === 'confirm') setStep(isSet ? 'side' : 'type');
   };
 
-  // 옵션 카드 렌더러
   const renderOptionCard = (
     item: Option,
     selected: boolean,
@@ -176,7 +182,6 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
     </button>
   );
 
-  // 페이지네이션 렌더러
   const renderPagination = (
     page: number,
     total: number,
@@ -231,6 +236,30 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
         </button>
       </div>
     ) : null;
+
+  const micBtn = (
+    <button
+      onClick={onToggleListening}
+      disabled={!isConnected}
+      style={{
+        width: '44px',
+        height: '44px',
+        borderRadius: '50%',
+        border: 'none',
+        background: isListening ? '#e63312' : '#f0f0f0',
+        fontSize: '20px',
+        cursor: isConnected ? 'pointer' : 'default',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: isListening ? '0 0 0 4px rgba(230,51,18,0.2)' : 'none',
+        transition: 'all 0.2s ease',
+      }}
+    >
+      🎤
+    </button>
+  );
 
   return (
     <div
@@ -356,7 +385,7 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
             </button>
           </div>
 
-          {/* 콘텐츠 영역 */}
+          {/* 콘텐츠 */}
           <div
             style={{
               flex: 1,
@@ -365,7 +394,6 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
               flexDirection: 'column',
             }}
           >
-            {/* Step 1: 단품 / 세트 */}
             {step === 'type' && (
               <>
                 <div
@@ -487,7 +515,6 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
               </>
             )}
 
-            {/* Step 2: 음료 선택 */}
             {step === 'drink' && (
               <>
                 <div
@@ -527,7 +554,6 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
               </>
             )}
 
-            {/* Step 3: 사이드 선택 */}
             {step === 'side' && (
               <>
                 <div
@@ -567,7 +593,6 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
               </>
             )}
 
-            {/* Step 4: 최종 확인 */}
             {step === 'confirm' && (
               <>
                 <div
@@ -703,7 +728,7 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
             )}
           </div>
 
-          {/* 페이지네이션 — 항상 같은 위치 */}
+          {/* 페이지네이션 */}
           <div
             style={{
               height: '40px',
@@ -728,6 +753,7 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
               flexShrink: 0,
               display: 'flex',
               gap: '8px',
+              alignItems: 'center',
             }}
           >
             {step === 'confirm' ? (
@@ -764,24 +790,28 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
                 >
                   {(unitPrice * quantity).toLocaleString()}원 담기
                 </button>
+                {micBtn}
               </>
             ) : step === 'type' ? (
-              <button
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  height: '44px',
-                  background: '#f0f0f0',
-                  color: '#555',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontWeight: '700',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                }}
-              >
-                닫기
-              </button>
+              <>
+                <button
+                  onClick={onClose}
+                  style={{
+                    flex: 1,
+                    height: '44px',
+                    background: '#f0f0f0',
+                    color: '#555',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '700',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  닫기
+                </button>
+                {micBtn}
+              </>
             ) : (
               <>
                 <button
@@ -816,6 +846,7 @@ function OptionModal({ menu, voiceMessage, onClose, onConfirm }: Props) {
                 >
                   닫기
                 </button>
+                {micBtn}
               </>
             )}
           </div>
