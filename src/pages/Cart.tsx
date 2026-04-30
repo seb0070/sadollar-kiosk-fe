@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useCart } from '../store/cartStore';
 import { useSession } from '../store/sessionStore';
+import { useVoice } from '../hooks/useVoice';
 import { getMenus } from '../api/menu';
 import { createOrder, completePayment } from '../api/order';
+import VoiceWave from '../components/VoiceWave';
 import type { MenuItem } from '../types';
 
 type PaymentStep = 'idle' | 'creating_order' | 'processing_payment' | 'error';
@@ -19,22 +21,26 @@ function Cart() {
     queryKey: ['menus'],
     queryFn: () => getMenus(),
   });
-  const { items, removeItem, total, totalCount } = useCart(menus);
+
+  const { items, updateItem, removeItem, total, totalCount, refetch } =
+    useCart(menus);
+
+  const { isConnected, isListening, voiceMessage, toggleListening } = useVoice(
+    sessionId,
+    {
+      onCartChange: refetch,
+    }
+  );
 
   const isProcessing =
     paymentStep === 'creating_order' || paymentStep === 'processing_payment';
 
-  // 결제 흐름: POST /order → POST /order/{id}/payment → 완료 페이지
   const paymentMutation = useMutation({
     mutationFn: async () => {
-      // 1단계: 주문 생성
       setPaymentStep('creating_order');
       const { order_id, total_price } = await createOrder(sessionId);
-
-      // 2단계: 결제 완료 (백엔드에서 장바구니 자동 비워짐)
       setPaymentStep('processing_payment');
       await completePayment(order_id, sessionId);
-
       return { order_id, total_price };
     },
     onSuccess: ({ order_id, total_price }) => {
@@ -52,7 +58,7 @@ function Cart() {
   });
 
   const handlePayment = () => {
-    if (items.length === 0) return; // 빈 장바구니 방어 (버튼 disabled와 이중 방어)
+    if (items.length === 0) return;
     setErrorMsg('');
     setPaymentStep('idle');
     paymentMutation.mutate();
@@ -81,10 +87,8 @@ function Cart() {
             background: 'rgba(0,0,0,0.5)',
             zIndex: 200,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '16px',
           }}
         >
           <div
@@ -93,11 +97,9 @@ function Cart() {
               borderRadius: '20px',
               padding: '32px 40px',
               textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
               minWidth: '240px',
             }}
           >
-            {/* 스피너 */}
             <div
               style={{
                 width: '48px',
@@ -159,7 +161,7 @@ function Cart() {
           ← 메뉴로
         </button>
         <span style={{ fontWeight: '800', fontSize: '17px', color: '#e63312' }}>
-          주문 내역
+          장바구니
         </span>
         <div style={{ width: '72px' }} />
       </div>
@@ -206,7 +208,12 @@ function Cart() {
               />
               <div style={{ flex: 1 }}>
                 <div
-                  style={{ fontSize: '14px', fontWeight: '600', color: '#222' }}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#222',
+                    marginBottom: '4px',
+                  }}
                 >
                   {item.name}
                 </div>
@@ -214,16 +221,66 @@ function Cart() {
                   style={{
                     fontSize: '13px',
                     color: '#e63312',
-                    marginTop: '4px',
                     fontWeight: '700',
                   }}
                 >
                   {(item.unit_price * item.quantity).toLocaleString()}원
                 </div>
+                {/* 수량 조절 */}
                 <div
-                  style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginTop: '8px',
+                  }}
                 >
-                  x{item.quantity}
+                  <button
+                    onClick={() => updateItem(item.cart_id, item.quantity - 1)}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      border: '1.5px solid #ddd',
+                      background: 'white',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#555',
+                    }}
+                  >
+                    −
+                  </button>
+                  <span
+                    style={{
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      minWidth: '20px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateItem(item.cart_id, item.quantity + 1)}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      border: '1.5px solid #ddd',
+                      background: 'white',
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#555',
+                    }}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
               <button
@@ -236,6 +293,7 @@ function Cart() {
                   fontSize: '18px',
                   padding: 0,
                   flexShrink: 0,
+                  alignSelf: 'flex-start',
                 }}
               >
                 ✕
@@ -282,6 +340,52 @@ function Cart() {
           </button>
         </div>
       )}
+
+      {/* 음성 영역 */}
+      <div
+        style={{
+          background: '#fff',
+          borderTop: '1px solid #ebebeb',
+          padding: '10px 16px',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            fontSize: '13px',
+            color: '#555',
+            fontWeight: '500',
+          }}
+        >
+          {voiceMessage || '음성으로 주문을 변경하실 수 있어요'}
+        </div>
+        <VoiceWave isActive={isListening} />
+        <button
+          onClick={toggleListening}
+          disabled={!isConnected}
+          style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            border: 'none',
+            background: isListening ? '#e63312' : '#f0f0f0',
+            fontSize: '20px',
+            cursor: isConnected ? 'pointer' : 'default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: isListening ? '0 0 0 4px rgba(230,51,18,0.2)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          🎤
+        </button>
+      </div>
 
       {/* 하단 합계 + 결제 버튼 */}
       <div

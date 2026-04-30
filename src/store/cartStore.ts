@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCart, addCartItem, deleteCartItem } from '../api/cart';
+import { getCart, addCartItem, updateCartItem, deleteCartItem } from '../api/cart';
 import { useSession } from './sessionStore';
 import type { MenuItem } from '../types';
 
@@ -54,6 +54,15 @@ export const useCart = (menus?: MenuItem[]) => {
     },
   });
 
+  // 수량 수정 → PUT /cart/{cart_id}
+  const updateMutation = useMutation({
+    mutationFn: ({ cartId, quantity }: { cartId: number; quantity: number }) =>
+      updateCartItem(cartId, quantity),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart', sessionId] });
+    },
+  });
+
   // 항목 삭제 → DELETE /cart/{cart_id}
   const removeMutation = useMutation({
     mutationFn: (cartId: number) => deleteCartItem(cartId),
@@ -72,6 +81,14 @@ export const useCart = (menus?: MenuItem[]) => {
     addMutation.mutate({ menu_id, unit_price, is_set, drink_option, side_option });
   };
 
+  const updateItem = (cartId: number, quantity: number) => {
+    if (quantity < 1) {
+      removeMutation.mutate(cartId);
+    } else {
+      updateMutation.mutate({ cartId, quantity });
+    }
+  };
+
   const removeItem = (cartId: number) => {
     removeMutation.mutate(cartId);
   };
@@ -81,5 +98,5 @@ export const useCart = (menus?: MenuItem[]) => {
     queryClient.invalidateQueries({ queryKey: ['cart', sessionId] });
   };
 
-  return { items, total, totalCount, addItem, removeItem, refetch };
+  return { items, total, totalCount, addItem, updateItem, removeItem, refetch };
 };
