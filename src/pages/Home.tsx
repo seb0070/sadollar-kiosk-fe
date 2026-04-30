@@ -57,20 +57,24 @@ function Home() {
   const navigate = useNavigate();
 
   const { sessionId } = useSession();
-  const {
-    isConnected,
-    isListening,
-    voiceMessage,
-    screenItems,
-    toggleListening,
-  } = useVoice(sessionId);
 
   const { data: menus, isLoading } = useQuery({
     queryKey: ['menus'],
     queryFn: () => getMenus(),
   });
 
-  const { items, addItem, total, totalCount } = useCart(menus);
+  const { addItem, totalCount, refetch } = useCart(menus);
+
+  const {
+    isConnected,
+    isListening,
+    voiceMessage,
+    screenItems,
+    toggleListening,
+  } = useVoice(sessionId, {
+    onCartChange: refetch,
+    onTimeout: refetch,
+  });
 
   const filtered = menus ? filterByCategory(menus, activeCategory) : [];
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -413,26 +417,6 @@ function Home() {
             )}
           </button>
           <button
-            onClick={() => items.length > 0 && navigate('/cart')}
-            disabled={items.length === 0}
-            style={{
-              flex: 1,
-              background: items.length === 0 ? '#e0e0e0' : '#e63312',
-              color: items.length === 0 ? '#aaa' : 'white',
-              border: 'none',
-              borderRadius: '12px',
-              height: '52px',
-              fontWeight: '700',
-              fontSize: '14px',
-              cursor: items.length === 0 ? 'default' : 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {items.length === 0
-              ? '결제하기'
-              : `결제 ${total.toLocaleString()}원`}
-          </button>
-          <button
             onClick={toggleListening}
             disabled={!isConnected}
             style={{
@@ -468,7 +452,13 @@ function Home() {
           onToggleListening={toggleListening}
           onClose={() => setSelectedMenu(null)}
           onConfirm={(params) => {
-            addItem(params.menu_id, params.unit_price);
+            addItem(
+              params.menu_id,
+              params.unit_price,
+              params.is_set ? 1 : 0,
+              params.drink_option,
+              params.side_option
+            );
           }}
         />
       )}
