@@ -20,11 +20,8 @@ interface SetMenu {
 
 interface Props {
   menu: MenuItem;
-  voiceMessage?: string;
-  isListening?: boolean;
-  isConnected?: boolean;
-  onToggleListening?: () => void;
   onClose: () => void;
+  initialStep?: 'type' | 'drink' | 'side' | 'confirm';
   onConfirm: (params: {
     menu_id: number;
     unit_price: number;
@@ -38,17 +35,11 @@ interface Props {
 type Step = 'type' | 'drink' | 'side' | 'confirm';
 const OPTIONS_PER_PAGE = 6;
 
-function OptionModal({
-  menu,
-  voiceMessage,
-  isListening,
-  isConnected,
-  onToggleListening,
-  onClose,
-  onConfirm,
-}: Props) {
-  const [step, setStep] = useState<Step>('type');
-  const [isSet, setIsSet] = useState(false);
+function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
+  const [step, setStep] = useState<Step>(initialStep ?? 'type');
+  const [isSet, setIsSet] = useState(
+    initialStep === 'drink' || initialStep === 'side'
+  );
   const [setInfo, setSetInfo] = useState<SetMenu | null>(null);
   const [drinks, setDrinks] = useState<Option[]>([]);
   const [sides, setSides] = useState<Option[]>([]);
@@ -237,30 +228,6 @@ function OptionModal({
       </div>
     ) : null;
 
-  const micBtn = (
-    <button
-      onClick={onToggleListening}
-      disabled={!isConnected}
-      style={{
-        width: '44px',
-        height: '44px',
-        borderRadius: '50%',
-        border: 'none',
-        background: isListening ? '#e63312' : '#f0f0f0',
-        fontSize: '20px',
-        cursor: isConnected ? 'pointer' : 'default',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        boxShadow: isListening ? '0 0 0 4px rgba(230,51,18,0.2)' : 'none',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      🎤
-    </button>
-  );
-
   return (
     <div
       style={{
@@ -285,26 +252,6 @@ function OptionModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* AI 말풍선 */}
-        {voiceMessage && (
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '14px',
-              padding: '10px 14px',
-              fontSize: '13px',
-              fontWeight: '500',
-              color: '#333',
-              lineHeight: '1.5',
-              textAlign: 'center',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-              border: '1.5px solid #e63312',
-            }}
-          >
-            💬 {voiceMessage}
-          </div>
-        )}
-
         {/* 모달 본체 */}
         <div
           style={{
@@ -790,28 +737,24 @@ function OptionModal({
                 >
                   {(unitPrice * quantity).toLocaleString()}원 담기
                 </button>
-                {micBtn}
               </>
             ) : step === 'type' ? (
-              <>
-                <button
-                  onClick={onClose}
-                  style={{
-                    flex: 1,
-                    height: '44px',
-                    background: '#f0f0f0',
-                    color: '#555',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontWeight: '700',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  닫기
-                </button>
-                {micBtn}
-              </>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1,
+                  height: '44px',
+                  background: '#f0f0f0',
+                  color: '#555',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                닫기
+              </button>
             ) : (
               <>
                 <button
@@ -846,7 +789,6 @@ function OptionModal({
                 >
                   닫기
                 </button>
-                {micBtn}
               </>
             )}
           </div>
