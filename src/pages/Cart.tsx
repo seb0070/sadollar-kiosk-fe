@@ -6,7 +6,6 @@ import { useSession } from '../store/sessionStore';
 import { useVoice } from '../hooks/useVoice';
 import { getMenus } from '../api/menu';
 import { createOrder, completePayment } from '../api/order';
-import VoiceWave from '../components/VoiceWave';
 import type { MenuItem } from '../types';
 
 type PaymentStep = 'idle' | 'creating_order' | 'processing_payment' | 'error';
@@ -25,12 +24,9 @@ function Cart() {
   const { items, updateItem, removeItem, total, totalCount, refetch } =
     useCart(menus);
 
-  const { isConnected, isListening, voiceMessage, toggleListening } = useVoice(
-    sessionId,
-    {
-      onCartChange: refetch,
-    }
-  );
+  const { voiceMessage } = useVoice(sessionId, {
+    onCartChange: refetch,
+  });
 
   const isProcessing =
     paymentStep === 'creating_order' || paymentStep === 'processing_payment';
@@ -341,51 +337,23 @@ function Cart() {
         </div>
       )}
 
-      {/* 음성 영역 */}
-      <div
-        style={{
-          background: '#fff',
-          borderTop: '1px solid #ebebeb',
-          padding: '10px 16px',
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-        }}
-      >
+      {/* 음성 메시지 영역 */}
+      {voiceMessage ? (
         <div
           style={{
-            flex: 1,
+            background: '#fff',
+            borderTop: '1px solid #ebebeb',
+            padding: '10px 16px',
+            flexShrink: 0,
             fontSize: '13px',
             color: '#555',
             fontWeight: '500',
+            textAlign: 'center',
           }}
         >
-          {voiceMessage || '음성으로 주문을 변경하실 수 있어요'}
+          {voiceMessage}
         </div>
-        <VoiceWave isActive={isListening} />
-        <button
-          onClick={toggleListening}
-          disabled={!isConnected}
-          style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            border: 'none',
-            background: isListening ? '#e63312' : '#f0f0f0',
-            fontSize: '20px',
-            cursor: isConnected ? 'pointer' : 'default',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            boxShadow: isListening ? '0 0 0 4px rgba(230,51,18,0.2)' : 'none',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          🎤
-        </button>
-      </div>
+      ) : null}
 
       {/* 하단 합계 + 결제 버튼 */}
       <div
