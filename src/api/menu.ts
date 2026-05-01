@@ -12,3 +12,12 @@ export const getMenuById = async (id: number): Promise<MenuItem> => {
   const res = await client.get(`/menu/${id}`);
   return res.data;
 };
+
+export const getMenuSetInfo = async (id: number): Promise<{ set: object } | null> => {
+  try {
+    const res = await client.get(`/menu/${id}/set`);
+    return res.data?.set ? res.data : null;
+  } catch {
+    return null;
+  }
+};

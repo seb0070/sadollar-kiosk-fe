@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getMenus } from '../api/menu';
+import { getMenus, getMenuSetInfo } from '../api/menu';
 import { useVoice } from '../hooks/useVoice';
 import { useCart } from '../store/cartStore';
 import { useSession } from '../store/sessionStore';
@@ -92,9 +92,17 @@ function Home() {
     toastTimerRef.current = setTimeout(() => setToastMsg(''), 2000);
   };
 
-  const handleMenuClick = (menu: MenuItem) => {
+  const handleMenuClick = async (menu: MenuItem) => {
     stopListening();
-    setSelectedMenu(menu);
+    const setInfo = await getMenuSetInfo(menu.id);
+    if (setInfo) {
+      // 세트 정보 있으면 모달 티우기
+      setSelectedMenu(menu);
+    } else {
+      // 세트 없으면 바로 담기
+      addItem(menu.id, menu.price, 0, '', '');
+      showToast('장바구니에 담겼어요! 🍔');
+    }
   };
 
   const handleCategoryChange = (cat: string) => {
