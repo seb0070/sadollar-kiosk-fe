@@ -90,7 +90,15 @@ function Home() {
       else if (action === 'PAGE:start') navigate('/');
       else if (action === 'PAGE:home') navigate('/home');
       else if (action.startsWith('TAB:')) {
-        setActiveCategory(action.replace('TAB:', ''));
+        const tab = action.replace('TAB:', '');
+        const tabMap: Record<string, string> = {
+          디저트: '디저트/치킨',
+          치킨: '디저트/치킨',
+          음료: '음료/커피',
+          커피: '음료/커피',
+          아이스샷: '음료/커피',
+        };
+        setActiveCategory(tabMap[tab] ?? tab);
         setPage(0);
       } else if (action === 'NONE') {
         // 담기 완료 - refetch 후 최민 항목으로 CartResultModal 표시
