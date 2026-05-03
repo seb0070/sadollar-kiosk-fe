@@ -208,11 +208,27 @@ function Cart() {
                     fontSize: '14px',
                     fontWeight: '600',
                     color: '#222',
-                    marginBottom: '4px',
+                    marginBottom: '2px',
                   }}
                 >
-                  {item.name}
+                  {item.name} {item.is_set === 1 ? '세트' : '단품'}
                 </div>
+                {(item.drink_name || item.side_name) && (
+                  <div style={{ marginBottom: '4px' }}>
+                    {item.drink_name && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888' }}>
+                        <span>-{item.drink_name}</span>
+                        <span>{item.drink_extra_price ? `+${item.drink_extra_price.toLocaleString()}원` : '0원'}</span>
+                      </div>
+                    )}
+                    {item.side_name && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888' }}>
+                        <span>-{item.side_name}</span>
+                        <span>{item.side_extra_price ? `+${item.side_extra_price.toLocaleString()}원` : '0원'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div
                   style={{
                     fontSize: '13px',
