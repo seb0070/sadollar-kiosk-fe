@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useSession } from '../store/sessionStore';
+import { getOrders } from '../api/order';
 
 interface PaymentState {
   orderId: number;
@@ -9,8 +11,22 @@ interface PaymentState {
 function PaymentComplete() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { sessionId } = useSession();
   const state = location.state as PaymentState | null;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fetchedOrder, setFetchedOrder] = useState<{ orderId: number; totalPrice: number } | null>(null);
+
+  useEffect(() => {
+    if (!state?.orderId && sessionId) {
+      getOrders(sessionId).then((data) => {
+        const orders: { order_id: number; total_price: number }[] = Array.isArray(data)
+          ? data
+          : (data?.orders ?? []);
+        const latest = orders[orders.length - 1];
+        if (latest) setFetchedOrder({ orderId: latest.order_id, totalPrice: latest.total_price });
+      }).catch(() => {});
+    }
+  }, [sessionId, state?.orderId]);
 
   // 30초 후 자동 홈 복귀
   useEffect(() => {
@@ -25,10 +41,9 @@ function PaymentComplete() {
     navigate('/');
   };
 
-  const orderNumber = state?.orderId
-    ? String(state.orderId).padStart(4, '0')
-    : '----';
-  const totalPrice = state?.totalPrice ?? 0;
+  const resolvedOrderId = state?.orderId ?? fetchedOrder?.orderId;
+  const orderNumber = resolvedOrderId ? String(resolvedOrderId).padStart(4, '0') : '----';
+  const totalPrice = state?.totalPrice ?? fetchedOrder?.totalPrice ?? 0;
 
   return (
     <div
