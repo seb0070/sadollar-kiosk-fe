@@ -140,6 +140,7 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
           validScreenItems = data.screen
             .split('\n')
             .map(line => line.replace(/^\d+\.\s*/, '').trim())
+            .map(line => line.split(/\s*[–-]\s*/)[0].trim())
             .filter(name => name.length > 0)
             .map(name => ({ name, price: 0, img_url: '' }));
         }

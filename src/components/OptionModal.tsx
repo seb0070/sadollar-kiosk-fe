@@ -22,6 +22,7 @@ interface Props {
   menu: MenuItem;
   onClose: () => void;
   initialStep?: 'type' | 'drink' | 'side' | 'confirm';
+  initialIsSet?: boolean;
   onConfirm: (params: {
     menu_id: number;
     unit_price: number;
@@ -35,10 +36,10 @@ interface Props {
 type Step = 'type' | 'drink' | 'side' | 'confirm';
 const OPTIONS_PER_PAGE = 6;
 
-function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
+function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Props) {
   const [step, setStep] = useState<Step>(initialStep ?? 'type');
   const [isSet, setIsSet] = useState(
-    initialStep === 'drink' || initialStep === 'side'
+    initialIsSet ?? (initialStep === 'drink' || initialStep === 'side')
   );
   const [setInfo, setSetInfo] = useState<SetMenu | null>(null);
   const [drinks, setDrinks] = useState<Option[]>([]);
