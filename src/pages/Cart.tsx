@@ -28,9 +28,9 @@ function Cart() {
     paymentStep === 'creating_order' || paymentStep === 'processing_payment';
 
   const paymentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (paymentMethod: 'card' | 'mobile') => {
       setPaymentStep('creating_order');
-      const { order_id, total_price } = await createOrder(sessionId);
+      const { order_id, total_price } = await createOrder(sessionId, paymentMethod);
       setPaymentStep('processing_payment');
       await completePayment(order_id, sessionId);
       return { order_id, total_price };
@@ -49,11 +49,11 @@ function Cart() {
     },
   });
 
-  const handlePayment = () => {
+  const handlePayment = (paymentMethod: 'card' | 'mobile') => {
     if (items.length === 0) return;
     setErrorMsg('');
     setPaymentStep('idle');
-    paymentMutation.mutate();
+    paymentMutation.mutate(paymentMethod);
   };
 
   return (
@@ -395,25 +395,44 @@ function Cart() {
             </strong>
           </span>
         </div>
-        <button
-          onClick={handlePayment}
-          disabled={items.length === 0 || isProcessing}
-          style={{
-            width: '100%',
-            background:
-              items.length === 0 || isProcessing ? '#e0e0e0' : '#e63312',
-            color: items.length === 0 || isProcessing ? '#aaa' : 'white',
-            border: 'none',
-            borderRadius: '14px',
-            height: '54px',
-            fontWeight: '700',
-            fontSize: '17px',
-            cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          {isProcessing ? '처리 중...' : `결제 ${total.toLocaleString()}원`}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => handlePayment('card')}
+            disabled={items.length === 0 || isProcessing}
+            style={{
+              flex: 1,
+              background: items.length === 0 || isProcessing ? '#e0e0e0' : '#222',
+              color: items.length === 0 || isProcessing ? '#aaa' : 'white',
+              border: 'none',
+              borderRadius: '14px',
+              height: '54px',
+              fontWeight: '700',
+              fontSize: '16px',
+              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isProcessing ? '처리 중...' : '카드결제'}
+          </button>
+          <button
+            onClick={() => handlePayment('mobile')}
+            disabled={items.length === 0 || isProcessing}
+            style={{
+              flex: 1,
+              background: items.length === 0 || isProcessing ? '#e0e0e0' : '#e63312',
+              color: items.length === 0 || isProcessing ? '#aaa' : 'white',
+              border: 'none',
+              borderRadius: '14px',
+              height: '54px',
+              fontWeight: '700',
+              fontSize: '16px',
+              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isProcessing ? '처리 중...' : '모바일결제'}
+          </button>
+        </div>
       </div>
     </div>
   );
