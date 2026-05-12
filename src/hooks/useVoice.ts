@@ -3,6 +3,10 @@ import { wsManager } from '../lib/wsManager';
 import type { WsMessage, ScreenItem } from '../types';
 
 let ttsAudioCtx: AudioContext | null = null;
+let isTtsPlaying = false;
+let ttsEndedAt = 0;
+const ttsQueue: ArrayBuffer[] = [];
+let isTtsProcessing = false;
 
 const getTtsAudioCtx = async (): Promise<AudioContext> => {
   if (!ttsAudioCtx || ttsAudioCtx.state === 'closed') {
@@ -14,17 +18,41 @@ const getTtsAudioCtx = async (): Promise<AudioContext> => {
   return ttsAudioCtx;
 };
 
-const playMp3 = async (buffer: ArrayBuffer) => {
-  try {
-    const ctx = await getTtsAudioCtx();
-    const decoded = await ctx.decodeAudioData(buffer.slice(0));
-    const src = ctx.createBufferSource();
-    src.buffer = decoded;
-    src.connect(ctx.destination);
-    src.start(0);
-  } catch (e) {
-    console.error('TTS 재생 오류:', e);
+const processTtsQueue = async () => {
+  if (isTtsProcessing || ttsQueue.length === 0) return;
+  isTtsProcessing = true;
+  isTtsPlaying = true;
+
+  while (ttsQueue.length > 0) {
+    const buffer = ttsQueue.shift()!;
+    try {
+      const ctx = await getTtsAudioCtx();
+      const decoded = await ctx.decodeAudioData(buffer.slice(0));
+      const src = ctx.createBufferSource();
+      src.buffer = decoded;
+      src.connect(ctx.destination);
+      await new Promise<void>((resolve) => {
+        // AudioContext가 suspend 상태로 onended가 안 불리는 경우를 대비한 safety timeout
+        const safetyTimer = setTimeout(resolve, (decoded.duration + 5) * 1000);
+        src.onended = () => {
+          clearTimeout(safetyTimer);
+          resolve();
+        };
+        src.start(0);
+      });
+    } catch (e) {
+      console.error('TTS 재생 오류:', e);
+    }
   }
+
+  isTtsPlaying = false;
+  isTtsProcessing = false;
+  ttsEndedAt = Date.now();
+};
+
+const playMp3 = (buffer: ArrayBuffer) => {
+  ttsQueue.push(buffer);
+  processTtsQueue();
 };
 
 interface UseVoiceOptions {
@@ -68,10 +96,11 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
   useEffect(() => {
     if (!sessionId) return;
 
-    wsManager.connect(sessionId, import.meta.env.VITE_WS_BASE_URL);
-
     const unsubscribe = wsManager.subscribe({
-      onConnected: (v: boolean) => setIsConnected(v),
+      onConnected: (v: boolean) => {
+        setIsConnected(v);
+        if (!v) stopListeningInternal();
+      },
       onMessage: (data: WsMessage) => {
         const action = data.action ?? 'NONE';
 
@@ -79,23 +108,45 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
 
         // TIMEOUT 처리
         if (action === 'TIMEOUT') {
-          setVoiceMessage(data.voice);
-          setScreenItems([]);
           stopListeningInternal();
+          wsManager.disconnect();
           onCartChangeRef.current?.();
           onTimeoutRef.current?.();
           return;
         }
 
         setVoiceMessage(data.voice);
-        stopListeningInternal();
 
-        // screen: RECOMMEND일 때만 카드 표시 (DRINK/SIDE_SELECT는 모달로 처리)
-        const isDrinkOrSide =
-          action.startsWith('DRINK_SELECT:') || action.startsWith('SIDE_SELECT:');
+        // screen: RECOMMEND일 때만 카드 표시 (DRINK/SIDE_SELECT는 모달, TAB은 탭전환으로 처리)
+        const skipScreenItems =
+          action.startsWith('DRINK_SELECT:') ||
+          action.startsWith('SIDE_SELECT:') ||
+          action.startsWith('TAB:');
 
-        if (Array.isArray(data.screen) && !isDrinkOrSide) {
-          setScreenItems(data.screen);
+        let validScreenItems: ScreenItem[] = [];
+        if (Array.isArray(data.screen)) {
+          const asObjects = (data.screen as unknown[]).filter(
+            (item): item is ScreenItem =>
+              typeof item === 'object' && item !== null && 'name' in item && 'price' in item
+          );
+          if (asObjects.length > 0) {
+            validScreenItems = asObjects;
+          } else {
+            validScreenItems = (data.screen as unknown[])
+              .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+              .map(name => ({ name: name.trim(), price: 0, img_url: '' }));
+          }
+        } else if (typeof data.screen === 'string' && data.screen.trim()) {
+          validScreenItems = data.screen
+            .split('\n')
+            .map(line => line.replace(/^\d+\.\s*/, '').trim())
+            .map(line => line.split(/\s*[–-]\s*/)[0].trim())
+            .filter(name => name.length > 0)
+            .map(name => ({ name, price: 0, img_url: '' }));
+        }
+
+        if (validScreenItems.length > 0 && !skipScreenItems) {
+          setScreenItems(validScreenItems);
         } else {
           setScreenItems([]);
         }
@@ -106,7 +157,7 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
         }
 
         // action 처리
-        if (action && action !== 'NONE') {
+        if (action) {
           onActionRef.current?.(action);
         }
       },
@@ -117,9 +168,10 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
   }, [sessionId]);
 
   const startListening = async () => {
-    if (!wsManager.isOpen()) return;
     if (isListeningRef.current) return;
 
+    wsManager.connect(sessionId, import.meta.env.VITE_WS_BASE_URL);
+    setVoiceMessage('');
     setScreenItems([]);
     await getTtsAudioCtx();
 
@@ -143,6 +195,7 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
+        if (isTtsPlaying || Date.now() - ttsEndedAt < 300) return;
         const inputData = e.inputBuffer.getChannelData(0);
         const inputSampleRate = audioCtx.sampleRate;
         const outputSampleRate = 16000;
@@ -178,7 +231,9 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
     isListening,
     voiceMessage,
     screenItems,
+    startListening,
     toggleListening,
     stopListening: stopListeningInternal,
+    clearScreenItems: () => setScreenItems([]),
   };
 };

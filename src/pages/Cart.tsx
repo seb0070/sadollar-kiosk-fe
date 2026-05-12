@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useCart } from '../store/cartStore';
 import { useSession } from '../store/sessionStore';
-import { useVoice } from '../hooks/useVoice';
+import { useVoiceContext } from '../store/voiceStore';
 import { getMenus } from '../api/menu';
 import { createOrder, completePayment } from '../api/order';
 import type { MenuItem } from '../types';
@@ -21,20 +21,16 @@ function Cart() {
     queryFn: () => getMenus(),
   });
 
-  const { items, updateItem, removeItem, total, totalCount, refetch } =
-    useCart(menus);
-
-  const { voiceMessage } = useVoice(sessionId, {
-    onCartChange: refetch,
-  });
+  const { items, updateItem, removeItem, total, totalCount } = useCart(menus);
+  const { voiceMessage } = useVoiceContext();
 
   const isProcessing =
     paymentStep === 'creating_order' || paymentStep === 'processing_payment';
 
   const paymentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (paymentMethod: 'card' | 'mobile') => {
       setPaymentStep('creating_order');
-      const { order_id, total_price } = await createOrder(sessionId);
+      const { order_id, total_price } = await createOrder(sessionId, paymentMethod);
       setPaymentStep('processing_payment');
       await completePayment(order_id, sessionId);
       return { order_id, total_price };
@@ -53,11 +49,11 @@ function Cart() {
     },
   });
 
-  const handlePayment = () => {
+  const handlePayment = (paymentMethod: 'card' | 'mobile') => {
     if (items.length === 0) return;
     setErrorMsg('');
     setPaymentStep('idle');
-    paymentMutation.mutate();
+    paymentMutation.mutate(paymentMethod);
   };
 
   return (
@@ -101,7 +97,7 @@ function Cart() {
                 width: '48px',
                 height: '48px',
                 border: '4px solid #f0f0f0',
-                borderTop: '4px solid #e63312',
+                borderTop: '4px solid #c95020',
                 borderRadius: '50%',
                 margin: '0 auto 16px',
                 animation: 'spin 0.8s linear infinite',
@@ -135,9 +131,9 @@ function Cart() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '12px 16px',
+          padding: '10px 16px',
           background: '#fff',
-          borderBottom: '1px solid #ebebeb',
+          borderBottom: '1px solid #f0f0f0',
           flexShrink: 0,
         }}
       >
@@ -145,18 +141,23 @@ function Cart() {
           onClick={() => navigate('/home')}
           style={{
             background: 'none',
-            border: '1.5px solid #ddd',
-            borderRadius: '20px',
-            padding: '6px 14px',
-            fontSize: '12px',
+            border: 'none',
             cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
             color: '#555',
+            fontSize: '12px',
             fontWeight: '500',
+            padding: '4px 2px',
           }}
         >
-          ← 메뉴로
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18l-6-6 6-6" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          메뉴로
         </button>
-        <span style={{ fontWeight: '800', fontSize: '17px', color: '#e63312' }}>
+        <span style={{ fontWeight: '800', fontSize: '17px', color: '#c95020' }}>
           장바구니
         </span>
         <div style={{ width: '72px' }} />
@@ -208,15 +209,31 @@ function Cart() {
                     fontSize: '14px',
                     fontWeight: '600',
                     color: '#222',
-                    marginBottom: '4px',
+                    marginBottom: '2px',
                   }}
                 >
-                  {item.name}
+                  {item.name} {item.is_set === 1 ? '세트' : '단품'}
                 </div>
+                {(item.drink_name || item.side_name) && (
+                  <div style={{ marginBottom: '4px' }}>
+                    {item.drink_name && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888' }}>
+                        <span>-{item.drink_name}</span>
+                        <span>{item.drink_extra_price ? `+${item.drink_extra_price.toLocaleString()}원` : '0원'}</span>
+                      </div>
+                    )}
+                    {item.side_name && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888' }}>
+                        <span>-{item.side_name}</span>
+                        <span>{item.side_extra_price ? `+${item.side_extra_price.toLocaleString()}원` : '0원'}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div
                   style={{
                     fontSize: '13px',
-                    color: '#e63312',
+                    color: '#c95020',
                     fontWeight: '700',
                   }}
                 >
@@ -305,11 +322,11 @@ function Cart() {
           style={{
             margin: '0 16px 8px',
             background: '#fff5f3',
-            border: '1.5px solid #e63312',
+            border: '1.5px solid #c95020',
             borderRadius: '10px',
             padding: '10px 14px',
             fontSize: '13px',
-            color: '#e63312',
+            color: '#c95020',
             fontWeight: '600',
             display: 'flex',
             justifyContent: 'space-between',
@@ -326,7 +343,7 @@ function Cart() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#e63312',
+              color: '#c95020',
               cursor: 'pointer',
               fontSize: '14px',
               padding: 0,
@@ -378,30 +395,51 @@ function Cart() {
           </span>
           <span>
             총 주문금액{' '}
-            <strong style={{ color: '#e63312' }}>
+            <strong style={{ color: '#c95020' }}>
               {total.toLocaleString()}원
             </strong>
           </span>
         </div>
-        <button
-          onClick={handlePayment}
-          disabled={items.length === 0 || isProcessing}
-          style={{
-            width: '100%',
-            background:
-              items.length === 0 || isProcessing ? '#e0e0e0' : '#e63312',
-            color: items.length === 0 || isProcessing ? '#aaa' : 'white',
-            border: 'none',
-            borderRadius: '14px',
-            height: '54px',
-            fontWeight: '700',
-            fontSize: '17px',
-            cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          {isProcessing ? '처리 중...' : `결제 ${total.toLocaleString()}원`}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => handlePayment('card')}
+            disabled={items.length === 0 || isProcessing}
+            style={{
+              flex: 1,
+              background: items.length === 0 || isProcessing ? '#e8e8e8' : '#3a3a4a',
+              color: items.length === 0 || isProcessing ? '#bbb' : 'white',
+              border: 'none',
+              borderRadius: '12px',
+              height: '48px',
+              fontWeight: '600',
+              fontSize: '15px',
+              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+              letterSpacing: '-0.2px',
+            }}
+          >
+            {isProcessing ? '처리 중...' : '카드결제'}
+          </button>
+          <button
+            onClick={() => handlePayment('mobile')}
+            disabled={items.length === 0 || isProcessing}
+            style={{
+              flex: 1,
+              background: items.length === 0 || isProcessing ? '#e8e8e8' : '#c95020',
+              color: items.length === 0 || isProcessing ? '#bbb' : 'white',
+              border: 'none',
+              borderRadius: '12px',
+              height: '48px',
+              fontWeight: '600',
+              fontSize: '15px',
+              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              transition: 'all 0.2s',
+              letterSpacing: '-0.2px',
+            }}
+          >
+            {isProcessing ? '처리 중...' : '모바일결제'}
+          </button>
+        </div>
       </div>
     </div>
   );

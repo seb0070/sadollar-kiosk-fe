@@ -22,6 +22,7 @@ interface Props {
   menu: MenuItem;
   onClose: () => void;
   initialStep?: 'type' | 'drink' | 'side' | 'confirm';
+  initialIsSet?: boolean;
   onConfirm: (params: {
     menu_id: number;
     unit_price: number;
@@ -35,10 +36,10 @@ interface Props {
 type Step = 'type' | 'drink' | 'side' | 'confirm';
 const OPTIONS_PER_PAGE = 6;
 
-function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
+function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Props) {
   const [step, setStep] = useState<Step>(initialStep ?? 'type');
   const [isSet, setIsSet] = useState(
-    initialStep === 'drink' || initialStep === 'side'
+    initialIsSet ?? (initialStep === 'drink' || initialStep === 'side')
   );
   const [setInfo, setSetInfo] = useState<SetMenu | null>(null);
   const [drinks, setDrinks] = useState<Option[]>([]);
@@ -108,7 +109,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
       key={item.option_id}
       onClick={onClick}
       style={{
-        border: selected ? '2px solid #e63312' : '1.5px solid #e0e0e0',
+        border: selected ? '2px solid #c95020' : '1.5px solid #e0e0e0',
         borderRadius: '10px',
         background: selected ? '#fff5f3' : 'white',
         cursor: 'pointer',
@@ -152,7 +153,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
         style={{
           fontSize: '10px',
           fontWeight: '600',
-          color: selected ? '#e63312' : '#222',
+          color: selected ? '#c95020' : '#222',
           textAlign: 'center',
           lineHeight: '1.3',
         }}
@@ -162,7 +163,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
       <div
         style={{
           fontSize: '10px',
-          color: selected ? '#e63312' : '#888',
+          color: selected ? '#c95020' : '#888',
           fontWeight: '600',
         }}
       >
@@ -196,7 +197,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
             height: '32px',
             borderRadius: '50%',
             border: 'none',
-            background: page === 0 ? '#eee' : '#e63312',
+            background: page === 0 ? '#eee' : '#c95020',
             color: page === 0 ? '#bbb' : 'white',
             fontSize: '14px',
             cursor: page === 0 ? 'default' : 'pointer',
@@ -216,7 +217,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
             borderRadius: '50%',
             border: 'none',
             background:
-              (page + 1) * OPTIONS_PER_PAGE >= total ? '#eee' : '#e63312',
+              (page + 1) * OPTIONS_PER_PAGE >= total ? '#eee' : '#c95020',
             color: (page + 1) * OPTIONS_PER_PAGE >= total ? '#bbb' : 'white',
             fontSize: '14px',
             cursor:
@@ -233,7 +234,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(0,0,0,0.72)',
         zIndex: 100,
         display: 'flex',
         flexDirection: 'column',
@@ -257,7 +258,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
           style={{
             background: 'white',
             borderRadius: '20px',
-            height: '62vh',
+            height: '50vh',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -303,7 +304,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
               <div
                 style={{
                   fontSize: '12px',
-                  color: '#e63312',
+                  color: '#c95020',
                   fontWeight: '600',
                   marginTop: '2px',
                 }}
@@ -356,61 +357,21 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
                 <div
                   style={{
                     flex: 1,
-                    display: 'grid',
-                    gridTemplateColumns: setInfo ? '1fr 1fr' : '1fr',
-                    gap: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
                     padding: '0 16px 16px',
-                    alignItems: 'stretch',
                   }}
                 >
-                  <button
-                    onClick={() => handleTypeSelect(false)}
+                  <div
                     style={{
-                      border: '1.5px solid #e0e0e0',
-                      borderRadius: '16px',
-                      background: 'white',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      maxHeight: '180px',
+                      display: 'grid',
+                      gridTemplateColumns: setInfo ? '1fr 1fr' : '1fr',
+                      gap: '12px',
+                      width: '100%',
                     }}
                   >
-                    <img
-                      src={menu.img_url || undefined}
-                      alt={menu.name}
-                      style={{
-                        width: '52px',
-                        height: '52px',
-                        objectFit: 'contain',
-                        borderRadius: '10px',
-                        background: '#f5f5f5',
-                      }}
-                    />
-                    <div
-                      style={{
-                        fontSize: '15px',
-                        fontWeight: '700',
-                        color: '#222',
-                      }}
-                    >
-                      단품
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '13px',
-                        color: '#e63312',
-                        fontWeight: '700',
-                      }}
-                    >
-                      {menu.price.toLocaleString()}원
-                    </div>
-                  </button>
-                  {setInfo && (
                     <button
-                      onClick={() => handleTypeSelect(true)}
+                      onClick={() => handleTypeSelect(false)}
                       style={{
                         border: '1.5px solid #e0e0e0',
                         borderRadius: '16px',
@@ -421,43 +382,66 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        maxHeight: '180px',
+                        height: '130px',
                       }}
                     >
                       <img
-                        src={setInfo.img_url || menu.img_url || undefined}
-                        alt={setInfo.name}
+                        src={menu.img_url || undefined}
+                        alt={menu.name}
                         style={{
-                          width: '52px',
-                          height: '52px',
+                          width: '44px',
+                          height: '44px',
                           objectFit: 'contain',
                           borderRadius: '10px',
                           background: '#f5f5f5',
                         }}
                       />
-                      <div
-                        style={{
-                          fontSize: '15px',
-                          fontWeight: '700',
-                          color: '#222',
-                        }}
-                      >
-                        세트
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#222' }}>
+                        단품
                       </div>
-                      <div style={{ fontSize: '11px', color: '#888' }}>
-                        음료+사이드 포함
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '13px',
-                          color: '#e63312',
-                          fontWeight: '700',
-                        }}
-                      >
-                        {setInfo.set_price.toLocaleString()}원
+                      <div style={{ fontSize: '13px', color: '#c95020', fontWeight: '700' }}>
+                        {menu.price.toLocaleString()}원
                       </div>
                     </button>
-                  )}
+                    {setInfo && (
+                      <button
+                        onClick={() => handleTypeSelect(true)}
+                        style={{
+                          border: '1.5px solid #e0e0e0',
+                          borderRadius: '16px',
+                          background: 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          height: '130px',
+                        }}
+                      >
+                        <img
+                          src={setInfo.img_url || menu.img_url || undefined}
+                          alt={setInfo.name}
+                          style={{
+                            width: '44px',
+                            height: '44px',
+                            objectFit: 'contain',
+                            borderRadius: '10px',
+                            background: '#f5f5f5',
+                          }}
+                        />
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#222' }}>
+                          세트
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#888' }}>
+                          음료+사이드 포함
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#c95020', fontWeight: '700' }}>
+                          {setInfo.set_price.toLocaleString()}원
+                        </div>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -610,7 +594,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
                         style={{
                           fontSize: '15px',
                           fontWeight: '700',
-                          color: '#e63312',
+                          color: '#c95020',
                         }}
                       >
                         {unitPrice.toLocaleString()}원
@@ -726,7 +710,7 @@ function OptionModal({ menu, onClose, initialStep, onConfirm }: Props) {
                   style={{
                     flex: 2,
                     height: '44px',
-                    background: '#e63312',
+                    background: '#c95020',
                     color: 'white',
                     border: 'none',
                     borderRadius: '12px',

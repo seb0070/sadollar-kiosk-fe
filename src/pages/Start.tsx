@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import heroImg from '../assets/hero.png';
+import bannerImg from '../assets/banner.jpg';
+import touchOrderImg from '../assets/touch_order.png';
+import voiceOrderImg from '../assets/voice_order.png';
 import { useSession } from '../store/sessionStore';
 
 function Start() {
   const navigate = useNavigate();
   const { resetSession } = useSession();
 
-  // 시작 화면 진입 시 세션 초기화
   useEffect(() => {
     resetSession();
   }, []);
@@ -26,20 +27,16 @@ function Start() {
         fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
       }}
     >
-      {/* 상단 홍보 배너 */}
-      <div style={{ flex: '0 0 38%', overflow: 'hidden' }}>
+      {/* 상단 배너 */}
+      <div style={{ flexShrink: 0, width: '100%' }}>
         <img
-          src={heroImg}
-          alt="리아버거 홍보"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
+          src={bannerImg}
+          alt="배너"
+          style={{ width: '100%', height: 'auto', display: 'block' }}
         />
       </div>
 
-      {/* 하단 주문 방식 선택 */}
+      {/* 하단 주문 선택 */}
       <div
         style={{
           flex: 1,
@@ -47,11 +44,20 @@ function Start() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '32px 24px',
-          gap: '28px',
+          padding: '28px 28px 40px',
+          gap: '24px',
+          background: '#f5f5f5',
         }}
       >
-        <div style={{ fontSize: '20px', fontWeight: '700', color: '#222' }}>
+        <div
+          style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            color: '#111',
+            textAlign: 'center',
+            letterSpacing: '-0.3px',
+          }}
+        >
           주문 방식을 선택해 주세요
         </div>
 
@@ -70,15 +76,23 @@ function Start() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
+              gap: '16px',
               padding: '32px 16px',
-              border: '1.5px solid #eee',
               borderRadius: '16px',
-              background: '#fafafa',
+              background: '#fff',
               cursor: 'default',
             }}
           >
-            <span style={{ fontSize: '48px' }}>👆</span>
+            <img
+              src={touchOrderImg}
+              alt="터치 주문"
+              style={{
+                width: '60px',
+                height: '60px',
+                objectFit: 'contain',
+                opacity: 0.35,
+              }}
+            />
             <span
               style={{ fontSize: '17px', fontWeight: '700', color: '#bbb' }}
             >
@@ -94,17 +108,21 @@ function Start() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
+              gap: '16px',
               padding: '32px 16px',
-              border: '1.5px solid #e63312',
               borderRadius: '16px',
               background: '#fff',
               cursor: 'pointer',
+              userSelect: 'none',
             }}
           >
-            <span style={{ fontSize: '48px' }}>🎤</span>
+            <img
+              src={voiceOrderImg}
+              alt="음성 주문"
+              style={{ width: '60px', height: '60px', objectFit: 'contain' }}
+            />
             <span
-              style={{ fontSize: '17px', fontWeight: '700', color: '#e63312' }}
+              style={{ fontSize: '17px', fontWeight: '700', color: '#000000' }}
             >
               음성 주문
             </span>

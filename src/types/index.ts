@@ -18,8 +18,10 @@ export interface CartItem {
   unit_price: number;
   img_url?: string;
   is_set?: number;
-  drink_name?: string;    // TODO: BE get_cart query 수정 후 연결
-  side_name?: string;     // TODO: BE get_cart query 수정 후 연결
+  drink_name?: string;
+  drink_extra_price?: number;
+  side_name?: string;
+  side_extra_price?: number;
 }
 
 export interface CartResponse {
@@ -35,12 +37,13 @@ export interface ScreenItem {
 
 export type ActionType =
   | 'PAGE:cart'
-  | 'PAGE:start'
-  | 'PAGE:home'
+  | 'PAGE:welcome'
+  | 'PAGE:menu'
+  | 'PAGE:complete'
   | 'TIMEOUT'
-  | 'NONE'
+  | 'CART_ADD'
   | `TAB:${string}`
-  | 'TYPE_SELECT'
+  | 'RECOMMEND'
   | `DRINK_SELECT:${string}`
   | `SIDE_SELECT:${string}`
   | string;

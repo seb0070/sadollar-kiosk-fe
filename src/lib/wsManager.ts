@@ -67,6 +67,12 @@ export const wsManager = {
     return ws?.readyState === WebSocket.OPEN;
   },
 
+  disconnect() {
+    ws?.close();
+    ws = null;
+    currentSessionId = '';
+  },
+
   subscribe(listener: Listener) {
     listeners.push(listener);
     // 구독 시점에 이미 연결돼 있으면 즉시 알림

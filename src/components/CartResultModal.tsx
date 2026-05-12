@@ -112,18 +112,18 @@ function CartResultModal({ items, onClose, autoCloseSec = 3 }: Props) {
                 {last.is_set === 1 ? '세트' : '단품'}
               </span>
             </div>
-            {/* TODO: BE get_cart query 수정 후 drink_name, side_name 연결 */}
             {last.drink_name && (
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
+                  alignItems: 'center',
+                  marginBottom: '6px',
                 }}
               >
-                <span style={{ fontSize: '13px', color: '#555' }}>음료</span>
-                <span style={{ fontSize: '13px', fontWeight: '600' }}>
-                  {last.drink_name}
+                <span style={{ fontSize: '13px', color: '#888' }}>-{last.drink_name}</span>
+                <span style={{ fontSize: '12px', color: last.drink_extra_price ? '#c95020' : '#aaa' }}>
+                  {last.drink_extra_price ? `+${last.drink_extra_price.toLocaleString()}원` : '0원'}
                 </span>
               </div>
             )}
@@ -132,12 +132,13 @@ function CartResultModal({ items, onClose, autoCloseSec = 3 }: Props) {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
+                  alignItems: 'center',
+                  marginBottom: '6px',
                 }}
               >
-                <span style={{ fontSize: '13px', color: '#555' }}>사이드</span>
-                <span style={{ fontSize: '13px', fontWeight: '600' }}>
-                  {last.side_name}
+                <span style={{ fontSize: '13px', color: '#888' }}>-{last.side_name}</span>
+                <span style={{ fontSize: '12px', color: last.side_extra_price ? '#c95020' : '#aaa' }}>
+                  {last.side_extra_price ? `+${last.side_extra_price.toLocaleString()}원` : '0원'}
                 </span>
               </div>
             )}
@@ -154,7 +155,7 @@ function CartResultModal({ items, onClose, autoCloseSec = 3 }: Props) {
                 style={{
                   fontSize: '15px',
                   fontWeight: '700',
-                  color: '#e63312',
+                  color: '#c95020',
                 }}
               >
                 {(last.unit_price * last.quantity).toLocaleString()}원
@@ -168,7 +169,7 @@ function CartResultModal({ items, onClose, autoCloseSec = 3 }: Props) {
           <div
             style={{
               height: '100%',
-              background: '#e63312',
+              background: '#c95020',
               animation: `shrink ${autoCloseSec}s linear forwards`,
             }}
           />

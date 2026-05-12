@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useState, useCallback } from 'react';
 import { SessionContext } from './store/sessionStore';
+import { VoiceProvider } from './store/voiceStore';
 import Start from './pages/Start';
 import Home from './pages/Home';
 import Cart from './pages/Cart';
@@ -16,12 +17,14 @@ function App() {
   return (
     <SessionContext.Provider value={{ sessionId, resetSession }}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Start />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/payment-complete" element={<PaymentComplete />} />
-        </Routes>
+        <VoiceProvider>
+          <Routes>
+            <Route path="/" element={<Start />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/payment-complete" element={<PaymentComplete />} />
+          </Routes>
+        </VoiceProvider>
       </BrowserRouter>
     </SessionContext.Provider>
   );
