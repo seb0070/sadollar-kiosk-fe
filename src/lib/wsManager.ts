@@ -69,6 +69,10 @@ export const wsManager = {
     }
   },
 
+  notifyTouch() {
+    this.sendText({ type: 'touch' });
+  },
+
   isOpen() {
     return ws?.readyState === WebSocket.OPEN;
   },

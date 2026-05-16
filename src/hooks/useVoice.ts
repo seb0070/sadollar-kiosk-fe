@@ -124,19 +124,7 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
           action.startsWith('TAB:');
 
         let validScreenItems: ScreenItem[] = [];
-        if (Array.isArray(data.screen)) {
-          const asObjects = (data.screen as unknown[]).filter(
-            (item): item is ScreenItem =>
-              typeof item === 'object' && item !== null && 'name' in item && 'price' in item
-          );
-          if (asObjects.length > 0) {
-            validScreenItems = asObjects;
-          } else {
-            validScreenItems = (data.screen as unknown[])
-              .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
-              .map(name => ({ name: name.trim(), price: 0, img_url: '' }));
-          }
-        } else if (typeof data.screen === 'string' && data.screen.trim()) {
+        if (typeof data.screen === 'string' && data.screen.trim()) {
           validScreenItems = data.screen
             .split('\n')
             .map(line => line.replace(/^\d+\.\s*/, '').trim())
@@ -151,8 +139,8 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
           setScreenItems([]);
         }
 
-        // 장바구니 갱신
-        if (data.voice) {
+        // 장바구니 갱신 (AI가 실제로 장바구니를 변경하는 액션일 때만)
+        if (action === 'CART_ADD' || action === 'NONE') {
           onCartChangeRef.current?.();
         }
 

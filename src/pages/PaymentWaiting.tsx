@@ -1,23 +1,40 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { wsManager } from '../lib/wsManager';
+import { useSession } from '../store/sessionStore';
+import { createOrder, completePayment } from '../api/order';
 
 interface LocationState {
   method: 'card' | 'mobile';
+  touch?: boolean;
 }
 
 const PAYMENT_DELAY_MS = 8000;
 
 function PaymentWaiting() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { sessionId } = useSession();
   const state = location.state as LocationState | null;
   const method = state?.method ?? 'card';
+  const isTouch = state?.touch ?? false;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => {
-      wsManager.sendText({ type: 'payment_complete', method });
-      // PAGE:complete 액션은 백엔드가 WS로 전송 → voiceStore가 /payment-complete로 이동
+    timerRef.current = setTimeout(async () => {
+      if (isTouch) {
+        try {
+          const order = await createOrder(sessionId, method);
+          const orderId: number = order.order_id ?? order.id;
+          await completePayment(orderId, sessionId);
+          navigate('/payment-complete', { state: { orderId, totalPrice: order.total_price } });
+        } catch {
+          navigate('/payment-complete');
+        }
+      } else {
+        wsManager.sendText({ type: 'payment_complete', method });
+        // PAGE:complete 액션은 백엔드가 WS로 전송 → voiceStore가 /payment-complete로 이동
+      }
     }, PAYMENT_DELAY_MS);
 
     return () => {

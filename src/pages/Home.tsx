@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMenus, getMenuSetInfo } from '../api/menu';
 import { useVoiceContext } from '../store/voiceStore';
 import { useCart } from '../store/cartStore';
+import { wsManager } from '../lib/wsManager';
 import VoiceWave from '../components/VoiceWave';
 import OptionModal from '../components/OptionModal';
 import type { MenuItem, ScreenItem } from '../types';
@@ -59,6 +60,7 @@ function Home() {
   >('type');
   const [modalIsSet, setModalIsSet] = useState(false);
   const [showCartResult, setShowCartResult] = useState(false);
+  const [modalVersion, setModalVersion] = useState(0);
   const [toastMsg, setToastMsg] = useState('');
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -109,6 +111,7 @@ function Home() {
           setModalIsSet(false);
           setModalInitialStep('type');
           setSelectedMenu(menu);
+          setModalVersion(v => v + 1);
         }
       } else if (action.startsWith('DRINK_SELECT:')) {
         const menuId = parseInt(action.replace('DRINK_SELECT:', ''));
@@ -119,6 +122,7 @@ function Home() {
           setModalIsSet(true);
           setModalInitialStep('drink');
           setSelectedMenu(menu);
+          setModalVersion(v => v + 1);
         }
       } else if (action.startsWith('SIDE_SELECT:')) {
         const menuId = parseInt(action.replace('SIDE_SELECT:', ''));
@@ -129,6 +133,7 @@ function Home() {
           setModalIsSet(true);
           setModalInitialStep('side');
           setSelectedMenu(menu);
+          setModalVersion(v => v + 1);
         }
       }
     };
@@ -166,6 +171,7 @@ function Home() {
   };
 
   const handleMenuClick = async (menu: MenuItem) => {
+    wsManager.notifyTouch();
     const setInfo = await getMenuSetInfo(menu.id);
     if (setInfo) {
       setModalInitialStep('type');
@@ -639,7 +645,7 @@ function Home() {
 
       {selectedMenu && (
         <OptionModal
-          key={`${selectedMenu.id}-${modalInitialStep}`}
+          key={`${selectedMenu.id}-${modalInitialStep}-${modalVersion}`}
           menu={selectedMenu}
           initialStep={modalInitialStep}
           initialIsSet={modalIsSet}

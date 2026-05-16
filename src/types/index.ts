@@ -55,7 +55,7 @@ export interface WsMessage {
   stt_text: string;
   refined_text: string;
   voice: string;
-  screen: ScreenItem[] | string;
+  screen: string;
   action: ActionType;
 }
 

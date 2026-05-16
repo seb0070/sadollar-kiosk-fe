@@ -1,20 +1,13 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../store/cartStore';
-import { useSession } from '../store/sessionStore';
 import { useVoiceContext } from '../store/voiceStore';
 import { getMenus } from '../api/menu';
-import { createOrder, completePayment } from '../api/order';
+import { wsManager } from '../lib/wsManager';
 import type { MenuItem } from '../types';
-
-type PaymentStep = 'idle' | 'creating_order' | 'processing_payment' | 'error';
 
 function Cart() {
   const navigate = useNavigate();
-  const { sessionId } = useSession();
-  const [paymentStep, setPaymentStep] = useState<PaymentStep>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
 
   const { data: menus } = useQuery<MenuItem[]>({
     queryKey: ['menus'],
@@ -24,36 +17,10 @@ function Cart() {
   const { items, updateItem, removeItem, total, totalCount } = useCart(menus);
   const { voiceMessage } = useVoiceContext();
 
-  const isProcessing =
-    paymentStep === 'creating_order' || paymentStep === 'processing_payment';
-
-  const paymentMutation = useMutation({
-    mutationFn: async (paymentMethod: 'card' | 'mobile') => {
-      setPaymentStep('creating_order');
-      const { order_id, total_price } = await createOrder(sessionId, paymentMethod);
-      setPaymentStep('processing_payment');
-      await completePayment(order_id, sessionId);
-      return { order_id, total_price };
-    },
-    onSuccess: ({ order_id, total_price }) => {
-      navigate('/payment-complete', {
-        state: { orderId: order_id, totalPrice: total_price },
-        replace: true,
-      });
-    },
-    onError: (err: Error) => {
-      setPaymentStep('error');
-      setErrorMsg(
-        err.message || '결제 중 오류가 발생했습니다. 다시 시도해주세요.'
-      );
-    },
-  });
-
   const handlePayment = (paymentMethod: 'card' | 'mobile') => {
     if (items.length === 0) return;
-    setErrorMsg('');
-    setPaymentStep('idle');
-    paymentMutation.mutate(paymentMethod);
+    wsManager.notifyTouch();
+    navigate('/payment-waiting', { state: { method: paymentMethod, touch: true } });
   };
 
   return (
@@ -69,61 +36,6 @@ function Cart() {
         fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
       }}
     >
-      {/* 결제 처리 중 오버레이 */}
-      {isProcessing && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '20px',
-              padding: '32px 40px',
-              textAlign: 'center',
-              minWidth: '240px',
-            }}
-          >
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                border: '4px solid #f0f0f0',
-                borderTop: '4px solid #c95020',
-                borderRadius: '50%',
-                margin: '0 auto 16px',
-                animation: 'spin 0.8s linear infinite',
-              }}
-            />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <div
-              style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                color: '#222',
-                marginBottom: '6px',
-              }}
-            >
-              {paymentStep === 'creating_order'
-                ? '주문을 접수하고 있습니다'
-                : '결제를 처리하고 있습니다'}
-            </div>
-            <div style={{ fontSize: '13px', color: '#888' }}>
-              {paymentStep === 'creating_order'
-                ? '잠시만 기다려주세요...'
-                : '카드를 빼지 마세요'}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 헤더 */}
       <div
         style={{
@@ -248,7 +160,7 @@ function Cart() {
                   }}
                 >
                   <button
-                    onClick={() => updateItem(item.cart_id, item.quantity - 1)}
+                    onClick={() => { wsManager.notifyTouch(); updateItem(item.cart_id, item.quantity - 1); }}
                     style={{
                       width: '28px',
                       height: '28px',
@@ -276,7 +188,7 @@ function Cart() {
                     {item.quantity}
                   </span>
                   <button
-                    onClick={() => updateItem(item.cart_id, item.quantity + 1)}
+                    onClick={() => { wsManager.notifyTouch(); updateItem(item.cart_id, item.quantity + 1); }}
                     style={{
                       width: '28px',
                       height: '28px',
@@ -296,7 +208,7 @@ function Cart() {
                 </div>
               </div>
               <button
-                onClick={() => removeItem(item.cart_id)}
+                onClick={() => { wsManager.notifyTouch(); removeItem(item.cart_id); }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -314,44 +226,6 @@ function Cart() {
           ))
         )}
       </div>
-
-      {/* 에러 메시지 */}
-      {paymentStep === 'error' && errorMsg && (
-        <div
-          style={{
-            margin: '0 16px 8px',
-            background: '#fff5f3',
-            border: '1.5px solid #c95020',
-            borderRadius: '10px',
-            padding: '10px 14px',
-            fontSize: '13px',
-            color: '#c95020',
-            fontWeight: '600',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <span>⚠️ {errorMsg}</span>
-          <button
-            onClick={() => {
-              setPaymentStep('idle');
-              setErrorMsg('');
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#c95020',
-              cursor: 'pointer',
-              fontSize: '14px',
-              padding: 0,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* 음성 메시지 영역 */}
       {voiceMessage ? (
@@ -402,41 +276,41 @@ function Cart() {
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => handlePayment('card')}
-            disabled={items.length === 0 || isProcessing}
+            disabled={items.length === 0}
             style={{
               flex: 1,
-              background: items.length === 0 || isProcessing ? '#e8e8e8' : '#3a3a4a',
-              color: items.length === 0 || isProcessing ? '#bbb' : 'white',
+              background: items.length === 0 ? '#e8e8e8' : '#3a3a4a',
+              color: items.length === 0 ? '#bbb' : 'white',
               border: 'none',
               borderRadius: '12px',
               height: '48px',
               fontWeight: '600',
               fontSize: '15px',
-              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              cursor: items.length === 0 ? 'default' : 'pointer',
               transition: 'all 0.2s',
               letterSpacing: '-0.2px',
             }}
           >
-            {isProcessing ? '처리 중...' : '카드결제'}
+            카드결제
           </button>
           <button
             onClick={() => handlePayment('mobile')}
-            disabled={items.length === 0 || isProcessing}
+            disabled={items.length === 0}
             style={{
               flex: 1,
-              background: items.length === 0 || isProcessing ? '#e8e8e8' : '#c95020',
-              color: items.length === 0 || isProcessing ? '#bbb' : 'white',
+              background: items.length === 0 ? '#e8e8e8' : '#c95020',
+              color: items.length === 0 ? '#bbb' : 'white',
               border: 'none',
               borderRadius: '12px',
               height: '48px',
               fontWeight: '600',
               fontSize: '15px',
-              cursor: items.length === 0 || isProcessing ? 'default' : 'pointer',
+              cursor: items.length === 0 ? 'default' : 'pointer',
               transition: 'all 0.2s',
               letterSpacing: '-0.2px',
             }}
           >
-            {isProcessing ? '처리 중...' : '모바일결제'}
+            모바일결제
           </button>
         </div>
       </div>

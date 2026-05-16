@@ -28,9 +28,9 @@ function PaymentComplete() {
     }
   }, [sessionId, state?.orderId]);
 
-  // 30초 후 자동 홈 복귀
+  // 15초 후 자동 홈 복귀
   useEffect(() => {
-    timerRef.current = setTimeout(() => navigate('/'), 30000);
+    timerRef.current = setTimeout(() => navigate('/'), 15000);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
