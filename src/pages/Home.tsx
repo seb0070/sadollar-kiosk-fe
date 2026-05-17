@@ -8,7 +8,6 @@ import { wsManager } from '../lib/wsManager';
 import VoiceWave from '../components/VoiceWave';
 import OptionModal from '../components/OptionModal';
 import type { MenuItem, ScreenItem } from '../types';
-import CartResultModal from '../components/CartResultModal';
 
 const CATEGORIES = ['추천메뉴', '버거', '디저트/치킨', '음료/커피', '행사메뉴'];
 const CARD_HEIGHT = 115;
@@ -59,8 +58,9 @@ function Home() {
     'type' | 'drink' | 'side' | 'confirm'
   >('type');
   const [modalIsSet, setModalIsSet] = useState(false);
-  const [showCartResult, setShowCartResult] = useState(false);
   const [modalVersion, setModalVersion] = useState(0);
+  const [voiceSelectedDrink, setVoiceSelectedDrink] = useState('');
+  const [voiceSelectedSide, setVoiceSelectedSide] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -70,7 +70,7 @@ function Home() {
     queryFn: () => getMenus(),
   });
 
-  const { items, addItem, totalCount } = useCart(menus);
+  const { addItem, totalCount } = useCart(menus);
 
   const {
     isListening,
@@ -81,10 +81,10 @@ function Home() {
     setExtraActionHandler,
   } = useVoiceContext();
 
-  const homeActionHandlerRef = useRef<(action: string) => void>(() => {});
+  const homeActionHandlerRef = useRef<(action: string, drinkOption?: string, sideOption?: string) => void>(() => {});
 
   useEffect(() => {
-    homeActionHandlerRef.current = (action: string) => {
+    homeActionHandlerRef.current = (action: string, drinkOption?: string, sideOption?: string) => {
       if (action.startsWith('TAB:')) {
         const tab = action.replace('TAB:', '');
         const tabMap: Record<string, string> = {
@@ -100,6 +100,8 @@ function Home() {
         if (selectedMenu) {
           setModalIsSet(modalInitialStep === 'drink' || modalInitialStep === 'side');
           setModalInitialStep('confirm');
+          setVoiceSelectedDrink(drinkOption ?? '');
+          setVoiceSelectedSide(sideOption ?? '');
         }
         startListening();
       } else if (action.startsWith('TYPE_SELECT:')) {
@@ -119,6 +121,8 @@ function Home() {
           ? menus?.find((m) => m.id === menuId) ?? null
           : null;
         if (menu) {
+          setVoiceSelectedDrink('');
+          setVoiceSelectedSide('');
           setModalIsSet(true);
           setModalInitialStep('drink');
           setSelectedMenu(menu);
@@ -140,7 +144,7 @@ function Home() {
   });
 
   useEffect(() => {
-    setExtraActionHandler((action) => homeActionHandlerRef.current(action));
+    setExtraActionHandler((action, drinkOption, sideOption) => homeActionHandlerRef.current(action, drinkOption, sideOption));
     return () => setExtraActionHandler(null);
   }, [setExtraActionHandler]);
 
@@ -153,6 +157,8 @@ function Home() {
       modalInitialStep === 'confirm'
     ) {
       setSelectedMenu(null);
+      setVoiceSelectedDrink('');
+      setVoiceSelectedSide('');
     }
     prevTotalCountRef.current = totalCount;
   }, [totalCount]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -635,13 +641,6 @@ function Home() {
         </div>
       )}
 
-      {/* 담기 완료 모달 */}
-      {showCartResult && (
-        <CartResultModal
-          items={items}
-          onClose={() => setShowCartResult(false)}
-        />
-      )}
 
       {selectedMenu && (
         <OptionModal
@@ -649,8 +648,14 @@ function Home() {
           menu={selectedMenu}
           initialStep={modalInitialStep}
           initialIsSet={modalIsSet}
+          preselectedDrink={voiceSelectedDrink}
+          preselectedSide={voiceSelectedSide}
+          onDrinkSelect={(name) => setVoiceSelectedDrink(name)}
+          onSideSelect={(name) => setVoiceSelectedSide(name)}
           onClose={() => {
             setSelectedMenu(null);
+            setVoiceSelectedDrink('');
+            setVoiceSelectedSide('');
             startListening();
           }}
           onConfirm={(params) => {
@@ -679,7 +684,7 @@ function Home() {
           textAlign: 'center',
           fontSize: '17px',
           fontWeight: '700',
-          color: (!!selectedMenu || showCartResult || screenItems.length > 0) ? 'white' : '#333',
+          color: (!!selectedMenu || screenItems.length > 0) ? 'white' : '#333',
           lineHeight: '1.5',
         }}
       >

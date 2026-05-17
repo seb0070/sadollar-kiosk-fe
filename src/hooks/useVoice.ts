@@ -69,7 +69,7 @@ const playMp3 = (buffer: ArrayBuffer) => {
 interface UseVoiceOptions {
   onCartChange?: () => void;
   onTimeout?: () => void;
-  onAction?: (action: string) => void;
+  onAction?: (action: string, drinkOption?: string, sideOption?: string) => void;
 }
 
 export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
@@ -158,7 +158,7 @@ export const useVoice = (sessionId: string, options?: UseVoiceOptions) => {
 
         // action 처리
         if (action) {
-          onActionRef.current?.(action);
+          onActionRef.current?.(action, data.drink_option, data.side_option);
         }
       },
       onAudio: (buffer: ArrayBuffer) => playMp3(buffer),

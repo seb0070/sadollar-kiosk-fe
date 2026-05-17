@@ -23,6 +23,10 @@ interface Props {
   onClose: () => void;
   initialStep?: 'type' | 'drink' | 'side' | 'confirm';
   initialIsSet?: boolean;
+  preselectedDrink?: string;
+  preselectedSide?: string;
+  onDrinkSelect?: (name: string) => void;
+  onSideSelect?: (name: string) => void;
   onConfirm: (params: {
     menu_id: number;
     unit_price: number;
@@ -36,7 +40,7 @@ interface Props {
 type Step = 'type' | 'drink' | 'side' | 'confirm';
 const OPTIONS_PER_PAGE = 6;
 
-function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Props) {
+function OptionModal({ menu, onClose, initialStep, initialIsSet, preselectedDrink, preselectedSide, onDrinkSelect, onSideSelect, onConfirm }: Props) {
   const [step, setStep] = useState<Step>(initialStep ?? 'type');
   const [isSet, setIsSet] = useState(
     initialIsSet ?? (initialStep === 'drink' || initialStep === 'side')
@@ -64,10 +68,13 @@ function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Pr
       .catch(() => {});
   }, [menu.id]);
 
+  const preselectedDrinkOption = preselectedDrink ? drinks.find(d => d.name === preselectedDrink) : null;
+  const preselectedSideOption = preselectedSide ? sides.find(s => s.name === preselectedSide) : null;
+  const drinkExtraPrice = selectedDrink?.extra_price ?? preselectedDrinkOption?.extra_price ?? 0;
+  const sideExtraPrice = selectedSide?.extra_price ?? preselectedSideOption?.extra_price ?? 0;
+
   const unitPrice = isSet
-    ? (setInfo?.set_price ?? menu.price + 2000) +
-      (selectedDrink?.extra_price ?? 0) +
-      (selectedSide?.extra_price ?? 0)
+    ? (setInfo?.set_price ?? menu.price + 2000) + drinkExtraPrice + sideExtraPrice
     : menu.price;
 
   const handleTypeSelect = (set: boolean) => {
@@ -76,10 +83,12 @@ function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Pr
   };
   const handleDrinkSelect = (drink: Option) => {
     setSelectedDrink(drink);
+    onDrinkSelect?.(drink.name);
     setStep('side');
   };
   const handleSideSelect = (side: Option) => {
     setSelectedSide(side);
+    onSideSelect?.(side.name);
     setStep('confirm');
   };
   const handleConfirm = () => {
@@ -556,11 +565,11 @@ function OptionModal({ menu, onClose, initialStep, initialIsSet, onConfirm }: Pr
                     {[
                       { label: '메뉴', value: menu.name },
                       { label: '종류', value: isSet ? '세트' : '단품' },
-                      ...(isSet && selectedDrink
-                        ? [{ label: '음료', value: selectedDrink.name }]
+                      ...(isSet && (selectedDrink?.name ?? preselectedDrink)
+                        ? [{ label: '음료', value: drinkExtraPrice > 0 ? `${selectedDrink?.name ?? preselectedDrink} (+${drinkExtraPrice.toLocaleString()}원)` : (selectedDrink?.name ?? preselectedDrink!) }]
                         : []),
-                      ...(isSet && selectedSide
-                        ? [{ label: '사이드', value: selectedSide.name }]
+                      ...(isSet && (selectedSide?.name ?? preselectedSide)
+                        ? [{ label: '사이드', value: sideExtraPrice > 0 ? `${selectedSide?.name ?? preselectedSide} (+${sideExtraPrice.toLocaleString()}원)` : (selectedSide?.name ?? preselectedSide!) }]
                         : []),
                     ].map(({ label, value }) => (
                       <div

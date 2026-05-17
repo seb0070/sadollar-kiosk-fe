@@ -12,7 +12,7 @@ interface VoiceContextValue {
   startListening: () => void;
   stopListening: () => void;
   clearScreenItems: () => void;
-  setExtraActionHandler: (handler: ((action: string) => void) | null) => void;
+  setExtraActionHandler: (handler: ((action: string, drinkOption?: string, sideOption?: string) => void) | null) => void;
 }
 
 const VoiceContext = createContext<VoiceContextValue | null>(null);
@@ -21,7 +21,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { sessionId } = useSession();
-  const extraHandlerRef = useRef<((action: string) => void) | null>(null);
+  const extraHandlerRef = useRef<((action: string, drinkOption?: string, sideOption?: string) => void) | null>(null);
 
   const location = useLocation();
   const { isListening, voiceMessage, screenItems, startListening, stopListening, clearScreenItems } =
@@ -31,19 +31,19 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ['cart', sessionId] });
         navigate('/');
       },
-      onAction: (action) => {
+      onAction: (action, drinkOption, sideOption) => {
         if (action === 'PAGE:cart') navigate('/cart');
         else if (action === 'PAGE:welcome') navigate('/');
         else if (action === 'PAGE:menu') navigate('/home');
         else if (action === 'PAGE:complete') navigate('/payment-complete');
         else if (action === 'PAGE:payment_card') navigate('/payment-waiting', { state: { method: 'card' } });
         else if (action === 'PAGE:payment_mobile') navigate('/payment-waiting', { state: { method: 'mobile' } });
-        else extraHandlerRef.current?.(action);
+        else extraHandlerRef.current?.(action, drinkOption, sideOption);
       },
     });
 
   const setExtraActionHandler = useCallback(
-    (handler: ((action: string) => void) | null) => {
+    (handler: ((action: string, drinkOption?: string, sideOption?: string) => void) | null) => {
       extraHandlerRef.current = handler;
     },
     []
